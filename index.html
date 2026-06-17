@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -748,12 +749,12 @@ Respond ONLY with a valid JSON object — no markdown, no code fences, no explan
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: 'claude-sonnet-4-6',
-          max_tokens: 1000,
+          max_tokens: 2000,
           system: SYSTEM_PROMPT,
           tools: [{ type: 'web_search_20250305', name: 'web_search' }],
           messages: [{
             role: 'user',
-            content: `Verify this real estate listing as a potential F2M Studios lead: ${input}`
+            content: `Verify this real estate listing as a potential F2M Studios lead: ${input}\n\nYou MUST end your response with ONLY a valid JSON object. No text after the JSON. The JSON must start with { and end with }.`
           }]
         })
       });
@@ -766,17 +767,19 @@ Respond ONLY with a valid JSON object — no markdown, no code fences, no explan
 
       const data = await response.json();
 
-      // Extract the last text block which should be our JSON
+      // Extract text from all text blocks
       let jsonText = '';
       for (const block of data.content) {
         if (block.type === 'text') {
-          jsonText = block.text;
+          jsonText += block.text;
         }
       }
 
-      // Clean and parse
-      jsonText = jsonText.replace(/```json|```/g, '').trim();
-      const result = JSON.parse(jsonText);
+      // Extract JSON object from anywhere in the response
+      jsonText = jsonText.replace(/```json|```/g, '');
+      const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error('No valid JSON found in response');
+      const result = JSON.parse(jsonMatch[0]);
       currentResult = result;
 
       hideAll();
